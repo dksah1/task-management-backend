@@ -1,31 +1,98 @@
 import { Request, Response } from "express";
 import asyncHandler from "../middleware/asyncHandler";
-import Task from "../models/task";
+import Task from "../database/models/task";
+import { Attachment } from "../database/models/attachment";
 
 const createTask = asyncHandler(async (req: Request, res: Response) => {
-  // if (!req.user) {
-  //   return res.status(401).json({ message: "User not found" });
-  // }
-
   const { title, description, dueDate } = req.body;
+  console.log("req.file", req.file);
 
-  //   const task = await Task.create({
-  //     title,
-  //     description,
-  //     dueDate,
-  //     userId: req.user.id, // Now `req.user.id` is recognized by TypeScript
-  //   });
+  if (!dueDate || isNaN(new Date(dueDate).getTime())) {
+    return res.status(400).json({ message: "Invalid dueDate format" });
+  }
 
-  //   res.status(201).json(task);
-  // });
+  const task = await Task.create({
+    title,
+    description,
+    dueDate: new Date(dueDate),
+    createdBy: req.user!.id,
+    status: "incomplete",
+  });
 
-  // const getTasks = asyncHandler(async (req: Request, res: Response) => {
-  //   if (!req.user) {
-  //     return res.status(401).json({ message: "User not found" });
-  //   }
-
-  //   const tasks = await Task.findAll({ where: { userId: req.user.id } });
-  //   res.json(tasks);
+  res.status(201).json({
+    success: true,
+    data: task,
+  });
 });
 
-export { createTask };
+// Get all tasks
+const getTasks = asyncHandler(async (req: Request, res: Response) => {
+  const tasks = await Task.findAll();
+
+  res.status(200).json({
+    success: true,
+    data: tasks,
+  });
+});
+
+// Get task by ID
+const getTaskById = asyncHandler(async (req: Request, res: Response) => {
+  const task = await Task.findByPk(req.params.id);
+
+  if (!task) {
+    return res.status(404).json({
+      success: false,
+      message: "Task not found",
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: task,
+  });
+});
+
+const updateTask = asyncHandler(async (req: Request, res: Response) => {
+  const { title, description, dueDate, status } = req.body;
+
+  const task = await Task.findByPk(req.params.id);
+
+  if (!task) {
+    return res.status(404).json({
+      success: false,
+      message: "Task not found",
+    });
+  }
+
+  task.title = title || task.title;
+  task.description = description || task.description;
+  task.dueDate = dueDate || task.dueDate;
+  task.status = status || task.status;
+
+  await task.save();
+
+  res.status(200).json({
+    success: true,
+    data: task,
+  });
+});
+
+const deleteTask = asyncHandler(async (req: Request, res: Response) => {
+  const task = await Task.findByPk(req.params.id);
+
+  if (!task) {
+    return res.status(404).json({
+      success: false,
+      message: "Task not found",
+    });
+  }
+
+  await task.destroy();
+
+  res.status(200).json({
+    success: true,
+    message: "Task deleted successfully",
+  });
+});
+
+export { createTask, getTasks, getTaskById, updateTask, deleteTask };

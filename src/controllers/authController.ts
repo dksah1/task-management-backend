@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import asyncHandler from "../middleware/asyncHandler";
-import User from "../models/user";
+import User from "../database/models/user";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwtUtils";
 import bcrypt from "bcryptjs";
 
@@ -21,7 +21,7 @@ const validateInput = (data: any) => {
 
 const registerUser = asyncHandler(async (req: Request, res: Response) => {
   const { name, email, password } = req.body;
-  console.log("Register request body:", req.body);
+  // console.log("Register request body:", req.body);
 
   validateInput(req.body);
 
@@ -90,41 +90,21 @@ const loginUser = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findOne({ where: { email } });
 
   if (user) {
-    if (user.isLoggedIn) {
-      return res.status(400).json({ message: "User is already logged in" });
-    }
-
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return res
-        .status(400)
-        .json({ message: "Invalid email or password! Try again." });
+      return res.status(400).json({ message: "wrong password!" });
     }
-
-    user.isLoggedIn = true;
-    await user.save();
 
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
-
-    // Set the cookies
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
 
     res.json({
       id: user.id,
       name: user.name,
       email: user.email,
+      accessToken,
+      refreshToken,
     });
   } else {
     return res.status(401).json({ message: "Invalid email or password" });
@@ -134,7 +114,6 @@ const loginUser = asyncHandler(async (req: Request, res: Response) => {
 const logoutUser = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.body;
   const user = await User.findByPk(id);
-
   if (user) {
     user.isLoggedIn = false;
     await user.save();

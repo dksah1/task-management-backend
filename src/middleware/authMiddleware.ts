@@ -1,13 +1,19 @@
 import jwt from "jsonwebtoken";
 import asyncHandler from "./asyncHandler";
-import User from "../models/user";
+import User from "../database/models/user";
 import { Request, Response, NextFunction } from "express";
 
-interface JwtPayload {
-  id: string;
+declare module "express-serve-static-core" {
+  interface Request {
+    user?: InstanceType<typeof User>;
+  }
 }
 
-const protect = asyncHandler(
+interface JwtPayload {
+  id: number;
+}
+
+const auth = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     let token;
 
@@ -17,19 +23,20 @@ const protect = asyncHandler(
     ) {
       try {
         token = req.headers.authorization.split(" ")[1];
+
         const decoded = jwt.verify(
           token,
-          process.env.JWT_SECRET as string
+          process.env.JWT_SECRET!
         ) as JwtPayload;
 
         const user = await User.findByPk(decoded.id);
 
         if (!user) {
           res.status(401);
-          throw new Error("User not found");
+          throw new Error("User not authenticated");
         }
 
-        // req.user = user;
+        req.user = user;
 
         next();
       } catch (error) {
@@ -46,4 +53,4 @@ const protect = asyncHandler(
   }
 );
 
-export { protect };
+export { auth };

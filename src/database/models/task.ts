@@ -1,5 +1,5 @@
 import { DataTypes, Model } from "sequelize";
-import sequelize from "../config/db";
+import sequelize from "../../config/db";
 import User from "./user";
 
 interface TaskAttributes {
@@ -7,7 +7,8 @@ interface TaskAttributes {
   title: string;
   description: string;
   dueDate: Date;
-  userId: number;
+  createdBy: number;
+  status: string;
 }
 
 class Task extends Model<TaskAttributes> implements TaskAttributes {
@@ -15,7 +16,8 @@ class Task extends Model<TaskAttributes> implements TaskAttributes {
   public title!: string;
   public description!: string;
   public dueDate!: Date;
-  public userId!: number;
+  public createdBy!: number;
+  public status!: string;
 }
 
 Task.init(
@@ -37,21 +39,29 @@ Task.init(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    userId: {
+    createdBy: {
       type: DataTypes.INTEGER,
       references: {
-        model: User,
+        model: "users",
         key: "id",
       },
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.ENUM,
+      values: ["completed", "incomplete"],
+      defaultValue: "incomplete",
     },
   },
   {
     sequelize,
     tableName: "tasks",
+    timestamps: true, // Automatically adds createdAt and updatedAt fields
   }
 );
 
-User.hasMany(Task, { foreignKey: "userId" });
-Task.belongsTo(User, { foreignKey: "userId" });
+// Define associations
+User.hasMany(Task, { foreignKey: "createdBy" });
+Task.belongsTo(User, { foreignKey: "createdBy" });
 
 export default Task;

@@ -6,6 +6,7 @@ import { notFound, errorHandler } from "./middleware/errorHandler";
 import sequelize from "./config/db";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import path from "path";
 
 dotenv.config();
 
@@ -22,23 +23,12 @@ app.use("/api/tasks", taskRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 sequelize.sync().then(() => {
   console.log("Database connected");
 });
 
-export default app;
-
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);
 });
-
-// import express, { Request, Response } from "express";
-// import dotenv from "dotenv";
-
-// dotenv.config();
-
-// const app = express();
-
-// app.get("/test", (req: Request, res: Response) => {
-
-// });
